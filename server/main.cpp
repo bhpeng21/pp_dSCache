@@ -1,9 +1,15 @@
+/*
+ * TcpClient.cpp - client客户端类成员函数实现
+ * 作者：徐轶哲 
+ * 版本 1.0
+ * 2021/12/17
+ */
 #include "LRU.h"
 #include "TcpServer.h"
 #include "utils.h"
 
 
-LRUCache myCache(5);
+LRUCache myCache(5); // 创建全局变量 cache节点
 
 int main(int argc,char *argv[])
 {
@@ -134,12 +140,20 @@ int main(int argc,char *argv[])
           strcpy(sendbuffer, sendStr.c_str());
           write(eventfd,sendbuffer,strlen(sendbuffer));
         }
-        else if(recvStr.substr(0, 6)=="expand" || recvStr.substr(0, 6)=="narrow") // 数据包来自于 master
+        else if(recvStr.substr(0, 6)=="expand" || recvStr.substr(0, 6)=="narrow") // 数据包来自于 master 为扩容缩容命令
         {
+          // 输入格式错误
+          if(recvStr.size()<22)
+          {
+            sendStr = "输入数据报命令有误，请重新输入！";
+            strcpy(sendbuffer, sendStr.c_str());
+            write(eventfd,sendbuffer,strlen(sendbuffer));
+            continue;
+          }
           // 将此cache节点与扩容缩容其它cache节点进行连接
           char ip[16];
-          strcpy(ip, recvStr.substr(6, 13).c_str()); // 存储读取的ip地址
-          if (TcpClient_1.ConnectToServer(ip, atoi(recvStr.substr(19, 4).c_str())) == false) // 目前设定ip地址长度为13 如 10.134.52.232 端口长度为4 如 5006
+          strcpy(ip, recvStr.substr(7, 13).c_str()); // 存储读取的ip地址
+          if (TcpClient_1.ConnectToServer(ip, atoi(recvStr.substr(21, 4).c_str())) == false) // 目前设定ip地址长度为13 如 10.134.52.232 端口长度为4 如 5006
           {
             printf("connect(%s:%s) failed.\n",argv[1],argv[2]); close(TcpClient_1.m_sockfd); 
             sendStr = "扩容/缩容中连接其它cache节点失败！";
@@ -149,12 +163,17 @@ int main(int argc,char *argv[])
           strcpy(sendbuffer, sendStr.c_str());
           write(eventfd,sendbuffer,strlen(sendbuffer));
         }
+        else if(recvStr.substr(0, 7)=="isAlive") // 数据报来自于master 心跳机制 检测cache server节点是否正常运行
+        {
+          sendStr = "ALIVE";
+          strcpy(sendbuffer, sendStr.c_str());
+          write(eventfd,sendbuffer,strlen(sendbuffer));
+        }
         else if(recvStr.substr(0, 11)=="updateCache") // 数据包来自于 cache server节点
         {
           sendStr = PreCacheServer(recvStr, myCache);
           strcpy(sendbuffer, sendStr.c_str());
           write(eventfd,sendbuffer,strlen(sendbuffer));
-
         }
         else
         {

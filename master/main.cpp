@@ -1,13 +1,116 @@
 #include <stdio.h>
-#include <unistd.h>
 #include <stdlib.h>
+#include <unistd.h>
+#include <errno.h>
 #include <string.h>
+#include <netinet/in.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
-#include <sys/fcntl.h>
+#include "md5.h"
+#include "wuhuDc.h"
+#include "wuhuServer.h"
+
+
+void analyseCmd(int eventfd, wuhuServer &server, string recvStr)
+{
+	string sendStr;
+	char sendbuffer[1024];
+	memset(sendbuffer, 0, sizeof(sendbuffer));
+	if (recvStr.substr(0, 3) == "get")
+    {
+      if(recvStr.size()!=8)
+      {
+        sendStr = "输入错误，请重新输入";
+      }
+      else
+      {
+        string key = recvStr.substr(4, 4);
+        sendStr = server.getKey(key);
+        sendStr.append(" for ");
+        sendStr.append(recvStr);
+      }
+      strcpy(sendbuffer,sendStr.c_str());
+      write (eventfd, sendbuffer, strlen(sendbuffer));
+   	  return;
+    }
+    if (recvStr.substr(0, 3) == "set")
+    {
+      if(recvStr.size()!=13)
+      {
+        sendStr = "输入错误，请重新输入";
+      }
+      else
+      {
+        string key = recvStr.substr(4, 4);
+        sendStr = server.setKey(key);
+        sendStr.append(" for ");
+        sendStr.append(recvStr);
+      }
+      strcpy(sendbuffer,sendStr.c_str());
+      write (eventfd, sendbuffer, strlen(sendbuffer));    //set\get回复的消息的内容需要优化
+   	  return;
+    }
+    if (recvStr.substr(0, 6) == "expand")
+    {
+      sendStr = "OK";
+      strcpy(sendbuffer, sendStr.c_str());
+      write(eventfd, sendbuffer, strlen(sendbuffer));
+
+      string ipandport = recvStr.substr(7, recvStr.size());
+      server.expand(ipandport, "expand");
+   	  return;
+    }
+    if (recvStr.substr(0, 6) == "narrow")
+    {
+      sendStr = "OK";
+      strcpy(sendbuffer, sendStr.c_str());
+      write(eventfd, sendbuffer, strlen(sendbuffer));
+
+      string ipandport = recvStr.substr(7, recvStr.size());
+      server.narrow(ipandport, "narrow");
+    	return;
+    }
+	sendStr = "输入错误，请重新输入";
+	strcpy(sendbuffer, sendStr.c_str());
+	write(eventfd, sendbuffer, strlen(sendbuffer));
+  return;
+}
+
 
 // 初始化服务端的监听端口。
-int initserver(int port);
+int initserver(int port)
+{
+  int sock = socket(AF_INET,SOCK_STREAM,0);
+  if (sock < 0)
+  {
+    printf("socket() failed.\n"); return -1;
+  }
+
+  // Linux如下
+  int opt = 1; unsigned int len = sizeof(opt);
+  setsockopt(sock,SOL_SOCKET,SO_REUSEADDR,&opt,len);
+  setsockopt(sock,SOL_SOCKET,SO_KEEPALIVE,&opt,len);
+
+  struct sockaddr_in servaddr;
+  servaddr.sin_family = AF_INET;
+  servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
+  servaddr.sin_port = htons(port);
+
+  if (bind(sock,(struct sockaddr *)&servaddr,sizeof(servaddr)) < 0 )
+  {
+    printf("bind() failed.\n"); close(sock); return -1;
+  }
+
+  if (listen(sock,5) != 0 )
+  {
+    printf("listen() failed.\n"); close(sock); return -1;
+  }
+
+  return sock;
+}
+
+
+
 
 int main(int argc,char *argv[])
 {
@@ -19,6 +122,12 @@ int main(int argc,char *argv[])
   // 初始化服务端用于监听的socket。
   int listensock = initserver(atoi(argv[1]));
   printf("listensock=%d\n",listensock);
+
+  //初始化服务器
+  wuhuServer server;
+  server.expand("10.134.52.218 5003");
+  server.expand("10.134.52.218 5004");
+
 
   if (listensock < 0)
   {
@@ -45,7 +154,7 @@ int main(int argc,char *argv[])
     // 返回失败。
     if (infds < 0)
     {
-    printf("select() failed.\n"); perror("select()"); break;
+      printf("select() failed.\n"); perror("select()"); break;
     }
 
     // 超时，在本程序中，select函数最后一个参数为空，不存在超时的情况，但以下代码还是留着。
@@ -118,7 +227,15 @@ int main(int argc,char *argv[])
         printf("recv(eventfd=%d,size=%ld):%s\n",eventfd,isize,buffer);
 
         // 把收到的报文发回给客户端。
-        write(eventfd,buffer,strlen(buffer));
+        // write(eventfd,buffer,strlen(buffer));
+
+        string recvStr(buffer);
+
+        analyseCmd(eventfd, server, recvStr);
+
+	      server.updateTimeval();
+        server.heartbeatMonitor();
+
       }
     }
   }
@@ -126,34 +243,6 @@ int main(int argc,char *argv[])
   return 0;
 }
 
-// 初始化服务端的监听端口。
-int initserver(int port)
-{
-  int sock = socket(AF_INET,SOCK_STREAM,0);
-  if (sock < 0)
-  {
-    printf("socket() failed.\n"); return -1;
-  }
 
-  // Linux如下
-  int opt = 1; unsigned int len = sizeof(opt);
-  setsockopt(sock,SOL_SOCKET,SO_REUSEADDR,&opt,len);
-  setsockopt(sock,SOL_SOCKET,SO_KEEPALIVE,&opt,len);
 
-  struct sockaddr_in servaddr;
-  servaddr.sin_family = AF_INET;
-  servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
-  servaddr.sin_port = htons(port);
 
-  if (bind(sock,(struct sockaddr *)&servaddr,sizeof(servaddr)) < 0 )
-  {
-    printf("bind() failed.\n"); close(sock); return -1;
-  }
-
-  if (listen(sock,5) != 0 )
-  {
-    printf("listen() failed.\n"); close(sock); return -1;
-  }
-
-  return sock;
-}

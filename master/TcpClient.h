@@ -1,14 +1,4 @@
-/*
- * TcpClient.h - client客户端类定义
- * 作者：徐轶哲 
- * 版本 1.0
- * 2021/12/17
- */
-#pragma once
-
-#ifndef _TCPCLIENT_H_
-#define _TCPCLIENT_H_
-
+// #pragma once
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -36,4 +26,3 @@ public:
     ~CTcpClient();
 };
 
-#endif

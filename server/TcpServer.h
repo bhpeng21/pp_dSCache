@@ -1,4 +1,14 @@
+/*
+ * TcpClient.cpp - client客户端类成员函数实现
+ * 作者：徐轶哲 
+ * 版本 1.0
+ * 2021/12/17
+ */
 #pragma once
+
+#ifndef _TCPSERVER_H_
+#define _TCPSERVER_H_
+
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -26,3 +36,5 @@ public:
 
     ~CTcpServer();
 };
+
+#endif

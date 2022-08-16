@@ -1,4 +1,14 @@
+/*
+ * TcpClient.cpp - client客户端类成员函数实现
+ * 作者：徐轶哲 
+ * 版本 1.0
+ * 2021/12/17
+ */
 #pragma once
+
+#ifndef _UTILS_H_
+#define _UTILS_H_
+
 #include<string>
 #include<iostream>
 #include"LRU.h"
@@ -22,3 +32,5 @@ string PreMaster(const string s, LRUCache& cache, CTcpClient& clientfd);
 
 // 字符串数据包来自cache server端
 string PreCacheServer(const string s, LRUCache& cache);
+
+#endif

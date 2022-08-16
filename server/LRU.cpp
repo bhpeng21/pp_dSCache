@@ -1,3 +1,9 @@
+/*
+ * TcpClient.h - client客户端类定义
+ * 作者：徐轶哲 
+ * 版本 1.0
+ * 2021/12/17
+ */
 #include "LRU.h"
 
 // 默认构造
@@ -13,7 +19,11 @@ LRUCache::LRUCache(int iMaxSize)
 	m_iMaxSize = iMaxSize;
 }
 
-// 判断双向链表中是否有待查询key
+// 功能：判断双向链表中是否有待查询key
+//输入：
+//  待查询string字符串key
+//输出：
+//  返回是否存在
 bool LRUCache::Contain(string& key)
 {
 	auto iterFind = m_mapPair.find(key);
@@ -22,7 +32,11 @@ bool LRUCache::Contain(string& key)
 	return true;
 }
 
-// 获取key对应value值
+//功能：获取key对应value值
+//输入：
+//  待查询的string类型key值，要存储的string类型value值
+//输出：
+//  返回是否获取成功
 bool LRUCache::Get(string& key, string& val)
 {
 	auto iterFind = m_mapPair.find(key);
@@ -40,7 +54,11 @@ bool LRUCache::Get(string& key, string& val)
 	return true;
 }
 
-// 更新或者将新K-V对插入到链表中
+//功能：将K-V对插入到双向链表中
+//输入：
+//  待插入的string类型key值，待插入的string类型value值
+//输出：
+//  返回是否插入成功
 bool LRUCache::Set(string key, string val)
 {
 	if (Contain(key))
@@ -73,7 +91,11 @@ bool LRUCache::Set(string key, string val)
 	return true;
 }
 
-// 移除最久未被访问的K-V对
+//功能：移除最久未被访问的K-V对
+//输入：
+//  待删除K-V对中的string类型key值
+//输出：
+//  返回是否删除成功
 bool LRUCache::Remove(string& key)
 {
 	auto iterFind = m_mapPair.find(key);
